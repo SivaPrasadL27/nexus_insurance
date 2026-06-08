@@ -9,7 +9,6 @@ from app.models.customer import Customer
 import uuid
 import json
 
-# ✅ THIS WAS MISSING
 router = APIRouter()
 
 
@@ -18,13 +17,30 @@ async def process_claim(data: dict):
 
     db = SessionLocal()
 
-    # Create claim
+    # # Create claim
+    # claim = Claim(
+    #     id=str(uuid.uuid4()),
+    #     customer_id=data.get("customer_id", "unknown"),
+    #     amount=data["amount"],
+    #     status="processing"
+    # )
+
+    # ✅ Validate policy exists
+    policy = db.query(Policy).filter(Policy.id == data["policy_id"]).first()
+
+    if not policy:
+     db.close()
+     return {"error": "Invalid policy_id"}
+
+    # ✅ Create claim linked to policy
     claim = Claim(
         id=str(uuid.uuid4()),
-        customer_id=data.get("customer_id", "unknown"),
+        customer_id=policy.customer_id,
+        policy_id=policy.id,
         amount=data["amount"],
         status="processing"
-    )
+        )
+
 
     db.add(claim)
     db.commit()
@@ -48,7 +64,6 @@ async def process_claim(data: dict):
 
     db.commit()
     
-    # ✅ FIX: store claim_id BEFORE closing session
     claim_id = claim.id
 
     db.close()
@@ -63,14 +78,14 @@ def get_claim(claim_id: str):
 
     db = SessionLocal()
 
-    # ✅ Fetch claim
+    # Fetch claim
     claim = db.query(Claim).filter(Claim.id == claim_id).first()
 
     if not claim:
         db.close()
         return {"error": "Claim not found"}
 
-    # ✅ Fetch decision
+    # Fetch decision
     decision = db.query(Decision).filter(Decision.entity_id == claim_id).first()
 
     db.close()
@@ -78,6 +93,7 @@ def get_claim(claim_id: str):
     return {
         "claim_id": claim.id,
         "customer_id": claim.customer_id,
+        "policy_id": claim.policy_id,
         "amount": claim.amount,
         "status": claim.status,
         "decision": decision.decision if decision else None,
@@ -92,7 +108,7 @@ def create_policy(data: dict):
 
     db = SessionLocal()
 
-    # ✅ Step 1: Run Policy Pipeline
+    # Step 1: Run Policy Pipeline
     from app.pipelines.policy_pipeline import PolicyPipeline
 
     pipeline = PolicyPipeline()
@@ -103,7 +119,9 @@ def create_policy(data: dict):
         id=str(uuid.uuid4()),
         customer_id=data.get("customer_id", "unknown"),
         premium=result["premium"],
-        status=result["decision"]
+        status=result["decision"],
+        coverage_amount=data.get("coverage_amount", 5000),  # default
+        policy_type="medical"
     )
 
     db.add(policy)
@@ -199,6 +217,7 @@ def get_customer(customer_id: str):
         "claims": [
             {
                 "claim_id": c.id,
+                "policy_id": c.policy_id,
                 "amount": c.amount,
                 "status": c.status
             } for c in claims
