@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from app.pipelines.claim_pipeline import ClaimPipeline
-
+from app.services.graph_service import GraphService
 from app.core.database import SessionLocal
 from app.models.claim import Claim
 from app.models.decision import Decision
@@ -61,6 +61,15 @@ async def process_claim(data: dict):
     db.add(decision)
 
     claim.status = result["decision"]
+
+    # ✅ Push to Neo4j graph
+    GraphService.create_claim_graph(
+    customer_id=claim.customer_id,
+    policy_id=claim.policy_id,
+    claim_id=claim.id,
+    hospital=data["hospital"],
+    amount=data["amount"]
+)
 
     db.commit()
     

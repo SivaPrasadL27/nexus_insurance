@@ -56,7 +56,8 @@ class ClaimPipeline:
         hospital, expense, treatment = await asyncio.gather(
             hospital_agent(claim_data["hospital"]),
             expense_agent(claim_data["amount"]),
-            treatment_agent(claim_data["diagnosis"]),
+            # treatment_agent(claim_data["diagnosis"]),
+            treatment_agent(claim_data),
             fraud_agent(claim_data)
         )
 
