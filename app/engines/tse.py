@@ -1,10 +1,17 @@
 class TruthScoreEngine:
 
     def __init__(self):
+        # self.weights = {
+        #     "hospital": 0.3,
+        #     "expense": 0.4,
+        #     "treatment": 0.3
+        # }
         self.weights = {
-            "hospital": 0.3,
-            "expense": 0.4,
-            "treatment": 0.3
+            "hospital": 0.25,
+            "expense": 0.30,
+            "treatment": 0.25,
+            "coverage": 0.20,
+            "fraud": 0.20   
         }
 
     def compute(self, scores):
